@@ -1,0 +1,27 @@
+# ── Core detection ───────────────────────────────
+ultralytics>=8.0.0
+opencv-python-headless>=4.8.0
+numpy>=1.24.0
+
+# ── OCR ──────────────────────────────────────────
+easyocr>=1.7.0
+Pillow>=10.0.0
+
+# ── Web server ───────────────────────────────────
+flask>=3.0.0
+flask-cors>=4.0.0
+gunicorn>=21.0.0          # Production WSGI server (Railway/Render)
+Werkzeug>=3.0.0
+
+# ── Database ─────────────────────────────────────
+mysql-connector-python>=8.2.0
+# sqlite3 is built-in (auto fallback if MySQL unavailable)
+
+# ── Desktop GUI ──────────────────────────────────
+customtkinter>=5.2.0      # Modern dark-theme tkinter
+# pillow already listed above
+# tkinter is built-in
+
+# ── Utilities ────────────────────────────────────
+requests>=2.31.0
+python-dotenv>=1.0.0

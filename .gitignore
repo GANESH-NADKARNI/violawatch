@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+venv/
+.env
+
+# Models (upload manually)
+models/*.pt
+
+# Data
+*.db
+runs/
+Bike-Helmet-Detection-2/
+
+# Uploads/snapshots
+web/static/uploads/
+web/static/snapshots/
+
+# OS
+.DS_Store
+Thumbs.db

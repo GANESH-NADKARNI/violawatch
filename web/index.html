@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ViolaWatch v2 — Traffic Violation Detection</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=JetBrains+Mono:wght@400;600&family=DM+Sans:wght@300;400;500&display=swap');
+:root{
+  --bg0:#040608;--bg1:#07090f;--bg2:#0a0e18;--bg3:#0e1422;
+  --panel:#080c14;--border:#16243a;--border2:#1f3352;
+  --accent:#00c8f0;--accent2:#0099bb;
+  --red:#ff3d3d;--red2:#c42020;
+  --amber:#ffb224;--green:#00e5a0;--purple:#8b5cf6;
+  --text:#b8ccd8;--text2:#607d8f;--text3:#2d4558;
+  --glow:0 0 24px rgba(0,200,240,.12);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg0);color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;overflow:hidden}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,.025) 3px,rgba(0,0,0,.025) 4px);pointer-events:none;z-index:9999}
+
+/* LAYOUT */
+.app{display:grid;grid-template-rows:50px 1fr;grid-template-columns:240px 1fr 310px;grid-template-areas:"hdr hdr hdr" "side main det";height:100vh}
+
+/* HEADER */
+header{grid-area:hdr;background:var(--bg1);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:20px;z-index:100}
+.logo{font-family:'Rajdhani',sans-serif;font-size:20px;font-weight:700;color:#fff;display:flex;align-items:center;gap:10px}
+.logo-dot{width:30px;height:30px;background:linear-gradient(135deg,var(--accent),var(--purple));border-radius:6px;display:grid;place-items:center;font-size:15px;box-shadow:0 0 14px rgba(0,200,240,.35)}
+.logo span{color:var(--accent)}
+.nav-tabs{display:flex;gap:2px;margin-left:auto}
+.tab{background:none;border:1px solid transparent;color:var(--text2);padding:5px 14px;border-radius:4px;cursor:pointer;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;letter-spacing:.5px;transition:.15s all}
+.tab:hover{border-color:var(--border2);color:var(--text);background:var(--bg3)}
+.tab.active{color:var(--accent);border-color:var(--accent2);background:rgba(0,200,240,.06)}
+.live-pill{display:flex;align-items:center;gap:6px;padding:4px 12px;background:rgba(0,229,160,.07);border:1px solid rgba(0,229,160,.25);border-radius:20px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--green)}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 1.4s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* SIDEBAR */
+aside.sidebar{grid-area:side;background:var(--bg1);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column;gap:0}
+aside.sidebar::-webkit-scrollbar{width:3px}
+aside.sidebar::-webkit-scrollbar-thumb{background:var(--border2)}
+
+.sb-sec{padding:14px 14px 4px}
+.sb-lbl{font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px;color:var(--text3);text-transform:uppercase;margin-bottom:8px}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:4px}
+.stat-tile{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 10px 8px;transition:.2s}
+.stat-tile:hover{border-color:var(--border2)}
+.st-lbl{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:3px}
+.st-val{font-family:'Rajdhani',sans-serif;font-size:26px;font-weight:700;line-height:1;color:#fff}
+.st-val.red{color:var(--red);text-shadow:0 0 8px rgba(255,61,61,.25)}
+.st-val.amber{color:var(--amber)}
+.st-val.green{color:var(--green)}
+.st-val.accent{color:var(--accent)}
+
+.sep{height:1px;background:var(--border);margin:8px 14px}
+
+.cam-input{background:var(--bg2);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:5px;width:100%;font-size:12px;font-family:'JetBrains Mono',monospace;outline:none;transition:.15s}
+.cam-input:focus{border-color:var(--accent2)}
+
+.btn-start{width:100%;padding:9px;background:rgba(0,229,160,.12);border:1px solid rgba(0,229,160,.3);color:var(--green);border-radius:5px;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:.2s;letter-spacing:.5px}
+.btn-start:hover{background:rgba(0,229,160,.2)}
+.btn-stop{width:100%;padding:9px;background:rgba(255,61,61,.1);border:1px solid rgba(255,61,61,.3);color:var(--red);border-radius:5px;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:.2s;letter-spacing:.5px;margin-top:5px}
+.btn-stop:hover{background:rgba(255,61,61,.2)}
+
+/* Upload zone */
+.upload-zone{border:2px dashed var(--border2);border-radius:8px;padding:16px;text-align:center;cursor:pointer;transition:.2s;background:var(--bg2)}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:rgba(0,200,240,.04)}
+.upload-zone .uz-icon{font-size:24px;margin-bottom:6px}
+.upload-zone p{font-size:11px;color:var(--text2);line-height:1.5}
+.upload-zone b{color:var(--accent)}
+
+.progress-wrap{margin-top:8px}
+.prog-bar{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--accent2),var(--green));border-radius:2px;width:0%;transition:width .3s}
+.prog-label{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text2);margin-top:4px}
+
+.filter-sel,.filter-inp{width:100%;background:var(--bg2);border:1px solid var(--border);color:var(--text);padding:7px 9px;border-radius:5px;font-size:12px;outline:none;margin-bottom:6px;transition:.15s}
+.filter-sel:focus,.filter-inp:focus{border-color:var(--accent2)}
+.btn-filter{width:100%;padding:7px;background:var(--border);border:none;color:var(--text2);border-radius:5px;cursor:pointer;font-size:12px;transition:.15s;margin-bottom:4px}
+.btn-filter:hover{background:var(--border2);color:var(--text)}
+.btn-demo{width:100%;padding:6px;background:none;border:1px solid var(--border);color:var(--text3);border-radius:5px;cursor:pointer;font-size:11px;transition:.15s}
+.btn-demo:hover{border-color:var(--border2);color:var(--text2)}
+
+/* MAIN */
+main{grid-area:main;background:var(--bg0);display:flex;flex-direction:column;overflow:hidden}
+
+/* Camera feed — taller + contain so bounding boxes are never cropped */
+.cam-wrap{background:#000;border-bottom:1px solid var(--border);position:relative;height:420px;flex-shrink:0;overflow:hidden}
+.cam-img{width:100%;height:100%;object-fit:contain;display:none;background:#000}
+.cam-placeholder{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--text3)}
+.cam-placeholder .ci{font-size:40px;opacity:.25}
+.cam-placeholder p{font-size:12px;letter-spacing:.5px}
+/* Corner HUD brackets */
+.cam-wrap::before,.cam-wrap::after,.cam-wrap .cb-br,.cam-wrap .cb-bl{content:'';position:absolute;width:18px;height:18px;z-index:10;pointer-events:none}
+.cam-wrap::before{top:10px;left:10px;border-top:2px solid var(--accent);border-left:2px solid var(--accent)}
+.cam-wrap::after{top:10px;right:10px;border-top:2px solid var(--accent);border-right:2px solid var(--accent)}
+.cb-br{bottom:10px;right:10px;border-bottom:2px solid var(--accent);border-right:2px solid var(--accent)}
+.cb-bl{bottom:10px;left:10px;border-bottom:2px solid var(--accent);border-left:2px solid var(--accent)}
+
+/* Violations section */
+.viol-section{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.vsec-hdr{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+.vsec-title{font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:600;letter-spacing:1px;text-transform:uppercase}
+.badge{background:var(--bg2);border:1px solid var(--border2);color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:10px;padding:2px 8px;border-radius:10px}
+.btn-refresh{margin-left:auto;background:none;border:1px solid var(--border);color:var(--text2);padding:3px 10px;border-radius:4px;cursor:pointer;font-size:11px;transition:.15s}
+.btn-refresh:hover{border-color:var(--accent2);color:var(--accent)}
+
+/* Table */
+.tbl-hdr{display:grid;grid-template-columns:46px 1fr 110px 80px 70px;padding:6px 12px;font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;border-bottom:1px solid var(--border);flex-shrink:0}
+.vlist{flex:1;overflow-y:auto;padding:6px 8px}
+.vlist::-webkit-scrollbar{width:4px}
+.vlist::-webkit-scrollbar-thumb{background:var(--border2)}
+.vrow{display:grid;grid-template-columns:46px 1fr 110px 80px 70px;align-items:center;padding:7px 12px;border-radius:6px;border:1px solid transparent;margin-bottom:3px;cursor:pointer;transition:.15s;background:var(--bg1)}
+.vrow:hover{border-color:var(--border2);background:var(--bg2)}
+.vrow.sel{border-color:var(--accent2);background:rgba(0,200,240,.05)}
+.vr-id{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)}
+.vtag{font-size:9px;font-weight:700;padding:2px 6px;border-radius:3px;letter-spacing:.5px;text-transform:uppercase}
+.vtag.h{background:rgba(255,61,61,.12);color:var(--red);border:1px solid rgba(255,61,61,.25)}
+.vtag.s{background:rgba(255,178,36,.12);color:var(--amber);border:1px solid rgba(255,178,36,.25)}
+.vplate{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;color:var(--text)}
+.vplate.unk{color:var(--text3);font-size:10px;font-weight:400}
+.vtime{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)}
+.vconf{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text2)}
+
+/* Pagination */
+.pg{display:flex;align-items:center;gap:6px;padding:8px 14px;border-top:1px solid var(--border);flex-shrink:0}
+.pg-btn{background:var(--bg2);border:1px solid var(--border);color:var(--text2);padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px;transition:.15s}
+.pg-btn:hover:not(:disabled){border-color:var(--accent2);color:var(--accent)}
+.pg-btn:disabled{opacity:.3;cursor:not-allowed}
+.pg-info{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3);margin-left:auto}
+
+/* Loading */
+.loading{display:flex;align-items:center;justify-content:center;gap:8px;padding:40px;color:var(--text3);font-family:'JetBrains Mono',monospace;font-size:11px}
+.spin{width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* DETAIL PANEL */
+aside.detail{grid-area:det;background:var(--bg1);border-left:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+aside.detail::-webkit-scrollbar{width:3px}
+aside.detail::-webkit-scrollbar-thumb{background:var(--border2)}
+.det-hdr{padding:13px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+.det-title{font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text2)}
+.det-body{flex:1;padding:14px}
+.det-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:180px;color:var(--text3);gap:10px;font-size:11px}
+.snap{width:100%;aspect-ratio:16/9;background:var(--bg2);border:1px solid var(--border);border-radius:8px;overflow:hidden;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:11px;margin-bottom:14px}
+.snap img{width:100%;height:100%;object-fit:cover}
+
+.field-block{margin-bottom:12px}
+.fl{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px}
+.fv{background:var(--bg2);border:1px solid var(--border);padding:7px 10px;border-radius:5px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text);word-break:break-all}
+.fv.plate{font-size:18px;letter-spacing:3px;text-align:center;color:var(--amber);background:rgba(255,178,36,.05);border-color:rgba(255,178,36,.2)}
+
+.conf-row{display:flex;align-items:center;gap:8px;margin-top:4px}
+.conf-bar{flex:1;height:3px;background:var(--border);border-radius:2px;overflow:hidden}
+.conf-fill{height:100%;background:linear-gradient(90deg,var(--accent2),var(--green));border-radius:2px}
+.big-badge{display:inline-block;padding:5px 12px;border-radius:4px;font-family:'Rajdhani',sans-serif;font-size:14px;font-weight:700;letter-spacing:1px}
+.big-badge.h{background:rgba(255,61,61,.1);color:var(--red);border:1px solid rgba(255,61,61,.25)}
+.big-badge.s{background:rgba(255,178,36,.1);color:var(--amber);border:1px solid rgba(255,178,36,.25)}
+
+.det-select{width:100%;background:var(--bg2);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:5px;font-size:12px;outline:none;margin-bottom:10px}
+.btn-save{width:100%;padding:9px;background:rgba(0,200,240,.1);border:1px solid rgba(0,200,240,.3);color:var(--accent);border-radius:5px;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:.2s;margin-bottom:5px;letter-spacing:.5px}
+.btn-save:hover{background:rgba(0,200,240,.18)}
+.btn-del{width:100%;padding:9px;background:rgba(255,61,61,.08);border:1px solid rgba(255,61,61,.25);color:var(--red);border-radius:5px;font-family:'Rajdhani',sans-serif;font-size:13px;font-weight:700;cursor:pointer;transition:.2s;letter-spacing:.5px}
+.btn-del:hover{background:rgba(255,61,61,.15)}
+
+/* Mini trend chart */
+.chart-sec{padding:14px;border-top:1px solid var(--border)}
+.chart-lbl{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.mini-bars{display:flex;align-items:flex-end;gap:4px;height:48px}
+.mbar{flex:1;background:var(--border);border-radius:2px 2px 0 0;position:relative;cursor:pointer;min-height:3px;transition:.2s}
+.mbar:hover{background:var(--accent2)}
+.mbar-fill{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(180deg,var(--accent),var(--accent2));border-radius:2px 2px 0 0;transition:height .5s cubic-bezier(.4,0,.2,1)}
+.chart-days{display:flex;gap:4px;margin-top:4px}
+.chart-days span{flex:1;text-align:center;font-family:'JetBrains Mono',monospace;font-size:8px;color:var(--text3)}
+
+/* Jobs Panel */
+.jobs-sec{padding:0 14px 14px;border-top:1px solid var(--border)}
+.job-row{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;margin-bottom:5px}
+.job-name{font-size:11px;color:var(--text);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.job-bar{height:3px;background:var(--border);border-radius:2px;overflow:hidden;margin-bottom:3px}
+.job-prog{height:100%;background:linear-gradient(90deg,var(--accent2),var(--green));transition:width .5s}
+.job-meta{font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text3)}
+.status-done{color:var(--green)}
+.status-processing{color:var(--amber)}
+.status-error{color:var(--red)}
+
+/* Toast */
+#toasts{position:fixed;top:58px;right:14px;z-index:9998;display:flex;flex-direction:column;gap:6px}
+.toast{background:var(--bg2);border:1px solid var(--border2);color:var(--text);padding:9px 14px;border-radius:6px;font-size:12px;animation:tin .2s ease;max-width:270px}
+.toast.ok{border-left:3px solid var(--green)}
+.toast.err{border-left:3px solid var(--red)}
+.toast.info{border-left:3px solid var(--accent)}
+@keyframes tin{from{transform:translateX(16px);opacity:0}to{transform:translateX(0);opacity:1}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- HEADER -->
+<header>
+  <div class="logo"><div class="logo-dot">🎯</div>Viola<span>Watch</span></div>
+  <div class="nav-tabs">
+    <button class="tab active" onclick="switchTab('live',this)">Live Monitor</button>
+    <button class="tab" onclick="switchTab('upload',this)">Video Upload</button>
+    <button class="tab" onclick="switchTab('jobs',this)">Jobs</button>
+  </div>
+  <div class="live-pill"><div class="live-dot"></div><span id="fps-lbl">STANDBY</span></div>
+</header>
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-sec">
+    <div class="sb-lbl">Statistics</div>
+    <div class="stat-grid">
+      <div class="stat-tile"><div class="st-lbl">Total</div><div class="st-val accent" id="s-total">—</div></div>
+      <div class="stat-tile"><div class="st-lbl">Today</div><div class="st-val red" id="s-today">—</div></div>
+      <div class="stat-tile" style="grid-column:span 2"><div class="st-lbl">🪖 No Helmet Violations</div><div class="st-val red" id="s-helmet">—</div></div>
+    </div>
+  </div>
+
+  <div class="sep"></div>
+
+  <div class="sb-sec" id="live-controls">
+    <div class="sb-lbl">Camera</div>
+    <div style="margin-bottom:6px">
+      <div style="font-size:10px;color:var(--text3);margin-bottom:3px">Source (0=webcam / RTSP URL)</div>
+      <input id="cam-src" class="cam-input" value="0" placeholder="0 or rtsp://...">
+    </div>
+    <button class="btn-start" onclick="startCamera()">▶ START DETECTION</button>
+    <button class="btn-stop" onclick="stopCamera()">■ STOP</button>
+  </div>
+
+  <div class="sb-sec" id="upload-controls" style="display:none">
+    <div class="sb-lbl">Upload Video</div>
+    <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-inp').click()"
+         ondragover="event.preventDefault();this.classList.add('drag')"
+         ondragleave="this.classList.remove('drag')"
+         ondrop="handleDrop(event)">
+      <div class="uz-icon">📹</div>
+      <p>Drop video here or<br><b>click to browse</b></p>
+      <p style="margin-top:4px;font-size:10px">MP4 • AVI • MOV • MKV up to 500MB</p>
+    </div>
+    <input type="file" id="file-inp" accept="video/*" style="display:none" onchange="uploadFile(this.files[0])">
+    <div class="progress-wrap" id="prog-wrap" style="display:none">
+      <div class="prog-bar"><div class="prog-fill" id="prog-fill"></div></div>
+      <div class="prog-label" id="prog-label">Uploading...</div>
+    </div>
+  </div>
+
+  <div class="sep"></div>
+
+  <div class="sb-sec">
+    <div class="sb-lbl">Filters</div>
+    <select class="filter-sel" id="f-type" onchange="loadViolations()">
+      <option value="">All Types</option>
+      <option value="no_helmet">🪖 No Helmet</option>
+    </select>
+    <input class="filter-inp" id="f-plate" placeholder="Search plate..." oninput="loadViolations()">
+    <button class="btn-filter" onclick="clearFilters()">✕ Clear Filters</button>
+  </div>
+
+  <div style="padding:0 14px 14px;margin-top:auto">
+    <button class="btn-demo" onclick="seedDemo()">🎲 Load Demo Data</button>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main>
+  <div class="cam-wrap">
+    <div class="cb-br"></div><div class="cb-bl"></div>
+    <div class="cam-placeholder" id="cam-ph">
+      <div class="ci">📷</div>
+      <p>NO FEED — Start detection or upload a video</p>
+    </div>
+    <img id="cam-img" class="cam-img" alt="Live feed">
+  </div>
+
+  <div class="viol-section">
+    <div class="vsec-hdr">
+      <span class="vsec-title">Violations Log</span>
+      <span class="badge" id="v-count">0</span>
+      <button class="btn-refresh" onclick="loadViolations()">↻ Refresh</button>
+      <button class="btn-refresh" onclick="exportCSV()" style="color:var(--green);border-color:rgba(0,229,160,.3)">⬇ CSV</button>
+      <button class="btn-refresh" onclick="clearAllViolations()" style="color:var(--red);border-color:rgba(255,61,61,.3)">🗑 Clear All</button>
+    </div>
+    <div class="tbl-hdr"><span>#</span><span>Violation</span><span>Plate</span><span>Time</span><span>Conf</span></div>
+    <div class="vlist" id="vlist"><div class="loading"><div class="spin"></div>Loading...</div></div>
+    <div class="pg">
+      <button class="pg-btn" id="pg-prev" onclick="prevPage()" disabled>← Prev</button>
+      <span id="pg-info" class="pg-info">Page 1 / 1</span>
+      <button class="pg-btn" id="pg-next" onclick="nextPage()" disabled>Next →</button>
+    </div>
+  </div>
+</main>
+
+<!-- DETAIL PANEL -->
+<aside class="detail">
+  <div class="det-hdr"><div class="det-title">Detail</div></div>
+  <div class="det-body" id="det-body">
+    <div class="det-empty"><span style="font-size:22px">🔍</span><span>Select a violation</span></div>
+  </div>
+  <div class="chart-sec">
+    <div class="chart-lbl">7-Day Trend</div>
+    <div class="mini-bars" id="trend-bars"></div>
+    <div class="chart-days" id="trend-days"></div>
+  </div>
+  <div class="jobs-sec" id="jobs-sec">
+    <div class="chart-lbl" style="margin-bottom:8px">Recent Jobs</div>
+    <div id="jobs-list"><span style="font-size:10px;color:var(--text3)">No jobs yet</span></div>
+  </div>
+</aside>
+</div>
+
+<div id="toasts"></div>
+
+<script>
+// Use relative URL — works whether on localhost:5000, Railway, Render, anywhere
+const API = window.location.origin + '/api';
+let page=1,totalPages=1,selId=null,frameTimer=null,statsTimer=null;
+let lastViolationCount = 0;  // for auto-refresh when new violations arrive
+
+// ── Init ──────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded',()=>{
+  loadStats(); loadViolations(); loadJobs();
+  statsTimer = setInterval(()=>{ loadStats(); checkNewViolations(); }, 3000);
+  setInterval(loadJobs, 6000);
+});
+
+async function api(path, opts={}){
+  try{
+    const r = await fetch(API+path, {
+      headers: opts.body ? {'Content-Type':'application/json'} : {},
+      ...opts
+    });
+    return await r.json();
+  } catch(e){ return null; }
+}
+
+// Auto-refresh table when new violations detected
+async function checkNewViolations(){
+  const d = await api('/stats');
+  if(!d) return;
+  if(d.total > lastViolationCount){
+    lastViolationCount = d.total;
+    loadViolations();
+  }
+}
+
+// ── Tab switching ────────────────────────────────────────────────────────
+function switchTab(tab,el){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('live-controls').style.display=tab==='live'?'':'none';
+  document.getElementById('upload-controls').style.display=tab==='upload'?'':'none';
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────
+async function loadStats(){
+  const d=await api('/stats'); if(!d)return;
+  document.getElementById('s-total').textContent=d.total??0;
+  document.getElementById('s-today').textContent=d.today??0;
+  document.getElementById('s-helmet').textContent=(d.by_type?.no_helmet??0);
+  if(d.live){
+    const r=d.live;
+    document.getElementById('fps-lbl').textContent=r.is_running?`LIVE • ${r.fps} FPS`:'STANDBY';
+  }
+  if(d.trend) renderTrend(d.trend);
+}
+
+// ── Violations ────────────────────────────────────────────────────────────
+async function loadViolations(){
+  const vtype=document.getElementById('f-type').value;
+  const plate=document.getElementById('f-plate').value;
+  const params=new URLSearchParams({page,limit:25,...(vtype&&{type:vtype}),...(plate&&{plate})});
+  document.getElementById('vlist').innerHTML='<div class="loading"><div class="spin"></div>Loading...</div>';
+  const d=await api(`/violations?${params}`);
+  if(!d){document.getElementById('vlist').innerHTML='<div class="loading">Cannot reach server</div>';return;}
+  totalPages=d.pages||1;
+  document.getElementById('v-count').textContent=d.total;
+  document.getElementById('pg-info').textContent=`Page ${page} / ${totalPages}`;
+  document.getElementById('pg-prev').disabled=page<=1;
+  document.getElementById('pg-next').disabled=page>=totalPages;
+  if(!d.violations?.length){document.getElementById('vlist').innerHTML='<div class="loading">No violations found</div>';return;}
+  document.getElementById('vlist').innerHTML=d.violations.map(v=>{
+    const ih=v.violation_type==='no_helmet';
+    const tag=ih?'<span class="vtag h">🪖 No Helmet</span>':'<span class="vtag s">🚗 No Seatbelt</span>';
+    const plate=v.plate_number==='UNKNOWN'?'<span class="vplate unk">—</span>':`<span class="vplate">${v.plate_number}</span>`;
+    const conf=v.confidence>0?`${Math.round(v.confidence*100)}%`:'—';
+    const ts=(v.timestamp||'').slice(11,19);
+    return `<div class="vrow${selId===v.id?' sel':''}" onclick="selViolation(${v.id})">
+      <div class="vr-id">#${v.id}</div>
+      <div>${tag}</div>
+      ${plate}
+      <div class="vtime">${ts}</div>
+      <div class="vconf">${conf}</div>
+    </div>`;
+  }).join('');
+}
+
+async function selViolation(id){
+  selId=id;
+  loadViolations();
+  const v=await api(`/violations/${id}`); if(!v)return;
+  const ih=v.violation_type==='no_helmet';
+  const conf=Math.round((v.confidence||0)*100);
+  const snap = v.snapshot_path ? v.snapshot_path.replace(/.*[\\/]/, '') : '';
+  const snapUrl = snap ? `${API}/images/${snap}` : '';
+  document.getElementById('det-body').innerHTML=`
+    <div class="snap">${snapUrl
+      ? `<img src="${snapUrl}" style="width:100%;height:100%;object-fit:contain" onerror="this.parentNode.innerHTML='<span style=color:var(--text3)>Snapshot unavailable</span>'">`
+      : '<span style="color:var(--text3)">No snapshot</span>'}</div>
+    <div class="field-block"><div class="fl">Type</div>
+      <span class="big-badge ${ih?'h':'s'}">${ih?'🪖 No Helmet':'🚗 No Seatbelt'}</span></div>
+    <div class="field-block"><div class="fl">Plate</div>
+      <div class="fv plate">${v.plate_number==='UNKNOWN'?'Undetected':v.plate_number}</div></div>
+    <div class="field-block"><div class="fl">Timestamp</div>
+      <div class="fv" style="font-size:11px">${(v.timestamp||'').slice(0,19)}</div></div>
+    <div class="field-block"><div class="fl">Location</div>
+      <div class="fv" style="font-size:11px">${v.location||'—'}</div></div>
+    <div class="field-block"><div class="fl">Confidence ${conf}%</div>
+      <div class="conf-row"><div class="conf-bar"><div class="conf-fill" style="width:${conf}%"></div></div></div></div>
+    <div class="field-block"><div class="fl">Source</div>
+      <div class="fv" style="font-size:11px">${v.source_type||'live'}</div></div>
+    <div class="field-block"><div class="fl">Status</div>
+      <select id="d-status" class="det-select">
+        <option value="pending"${v.status==='pending'?' selected':''}>⏳ Pending</option>
+        <option value="reviewed"${v.status==='reviewed'?' selected':''}>✅ Reviewed</option>
+        <option value="dismissed"${v.status==='dismissed'?' selected':''}>❌ Dismissed</option>
+      </select>
+    </div>
+    <button class="btn-save" onclick="saveStatus(${id})">💾 Save Status</button>
+    <button class="btn-del" onclick="delViolation(${id})">🗑 Delete</button>
+  `;
+}
+
+async function saveStatus(id){
+  const s=document.getElementById('d-status')?.value;
+  if(!s)return;
+  await api(`/violations/${id}/status`,{method:'PATCH',body:JSON.stringify({status:s})});
+  toast('Status saved','ok'); loadViolations();
+}
+
+async function delViolation(id){
+  if(!confirm('Delete this record?'))return;
+  await api(`/violations/${id}`,{method:'DELETE'});
+  selId=null;
+  document.getElementById('det-body').innerHTML='<div class="det-empty"><span style="font-size:22px">🔍</span><span>Select a violation</span></div>';
+  toast('Deleted','info'); loadViolations(); loadStats();
+}
+
+function prevPage(){if(page>1){page--;loadViolations();}}
+function nextPage(){if(page<totalPages){page++;loadViolations();}}
+function clearFilters(){document.getElementById('f-type').value='';document.getElementById('f-plate').value='';page=1;loadViolations();}
+
+// ── Camera ────────────────────────────────────────────────────────────────
+async function startCamera(){
+  const src=document.getElementById('cam-src').value;
+  const source=src===''?0:(isNaN(src)?src:parseInt(src));
+  const r=await api('/camera/start',{method:'POST',body:JSON.stringify({source})});
+  if(r?.ok){
+    toast('Detection started','ok');
+    document.getElementById('cam-ph').style.display='none';
+    document.getElementById('cam-img').style.display='block';
+    startFramePoll();
+  }else{toast(r?.error||'Camera error','err');}
+}
+async function stopCamera(){
+  await api('/camera/stop',{method:'POST'});
+  stopFramePoll();
+  document.getElementById('cam-ph').style.display='flex';
+  document.getElementById('cam-img').style.display='none';
+  toast('Stopped','info');
+}
+function startFramePoll(){
+  if(frameTimer) clearInterval(frameTimer);
+  let failCount = 0;
+  const imgEl = document.getElementById('cam-img');
+  const phEl  = document.getElementById('cam-ph');
+
+  frameTimer = setInterval(async()=>{
+    try {
+      // Direct fetch with no-cache to always get fresh frame
+      const resp = await fetch(API+'/camera/frame', {cache:'no-store'});
+      const d = await resp.json();
+      if(d?.frame && d.frame.length > 100){
+        imgEl.src = 'data:image/jpeg;base64,' + d.frame;
+        imgEl.style.display = 'block';
+        phEl.style.display  = 'none';
+        failCount = 0;
+      } else {
+        failCount++;
+        if(failCount > 10){
+          // No frame for 2+ seconds — show placeholder
+          imgEl.style.display = 'none';
+          phEl.style.display  = 'flex';
+          phEl.innerHTML = '<div class="ci">⏳</div><p>Processing... waiting for frames</p>';
+        }
+      }
+    } catch(e) {
+      failCount++;
+    }
+  }, 200);
+}
+function stopFramePoll(){
+  if(frameTimer){ clearInterval(frameTimer); frameTimer=null; }
+}
+
+// ── Video Upload ──────────────────────────────────────────────────────────
+function handleDrop(e){
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.remove('drag');
+  const f=e.dataTransfer.files[0];
+  if(f) uploadFile(f);
+}
+
+async function uploadFile(file){
+  if(!file)return;
+  document.getElementById('prog-wrap').style.display='block';
+  document.getElementById('prog-label').textContent=`Uploading ${file.name}...`;
+  document.getElementById('prog-fill').style.width='10%';
+
+  const form=new FormData();
+  form.append('file',file);
+
+  let r;
+  try{
+    // Note: no Content-Type header for multipart — browser sets it with boundary
+    const resp=await fetch(API+'/upload',{method:'POST',body:form});
+    r=await resp.json();
+  }catch(e){toast('Upload failed — is server running?','err');return;}
+
+  if(!r?.ok){toast(r?.error||'Upload failed','err');return;}
+  
+  document.getElementById('prog-fill').style.width='20%';
+  document.getElementById('prog-label').textContent=`Processing ${file.name}...`;
+  toast('Video uploaded — processing started','ok');
+
+  // Show frame stream during processing
+  document.getElementById('cam-ph').style.display='none';
+  document.getElementById('cam-img').style.display='block';
+  startFramePoll();
+
+  // Poll job progress
+  const jid=r.job_id;
+  const pollJob=setInterval(async()=>{
+    const j=await api(`/jobs/${jid}`);
+    if(!j)return;
+    const pct=j.total_frames>0?Math.round((j.processed/j.total_frames)*100):20;
+    document.getElementById('prog-fill').style.width=`${pct}%`;
+    document.getElementById('prog-label').textContent=
+      `${pct}% — ${j.violations_found} violations found`;
+    if(j.status==='done'||j.status==='error'){
+      clearInterval(pollJob);
+      stopFramePoll();
+      document.getElementById('prog-fill').style.width='100%';
+      if(j.status==='done'){
+        document.getElementById('prog-label').textContent=`✅ Done! ${j.violations_found} violations`;
+        toast(`Found ${j.violations_found} violations`,'ok');
+      }else{
+        document.getElementById('prog-label').textContent=`❌ Error: ${j.error_msg}`;
+        toast('Processing error','err');
+      }
+      loadViolations(); loadStats(); loadJobs();
+    }
+  },1500);
+}
+
+// ── Jobs ──────────────────────────────────────────────────────────────────
+async function loadJobs(){
+  const d=await api('/jobs'); if(!d?.jobs)return;
+  if(!d.jobs.length){
+    document.getElementById('jobs-list').innerHTML='<span style="font-size:10px;color:var(--text3)">No jobs yet</span>';
+    return;
+  }
+  document.getElementById('jobs-list').innerHTML=d.jobs.slice(0,8).map(j=>{
+    const pct=j.total_frames>0?Math.round((j.processed/j.total_frames)*100):
+              (j.status==='done'?100:0);
+    const scls=j.status==='done'?'status-done':j.status==='error'?'status-error':'status-processing';
+    const canDel = j.status==='done'||j.status==='error'||j.status==='queued';
+    return `<div class="job-row" id="job-${j.id}">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div class="job-name" style="flex:1">${j.filename}</div>
+        ${canDel?`<button onclick="deleteJob(${j.id},'${j.filename}')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:13px;padding:0 2px" title="Remove">✕</button>`:''}
+      </div>
+      <div class="job-bar"><div class="job-prog" style="width:${pct}%"></div></div>
+      <div class="job-meta"><span class="${scls}">${j.status}</span> • ${j.violations_found} violations • ${pct}%</div>
+    </div>`;
+  }).join('');
+}
+
+async function deleteJob(id, filename){
+  if(!confirm(`Remove job "${filename}"?`)) return;
+  const r = await api(`/jobs/${id}`,{method:'DELETE'});
+  if(r?.ok){ toast('Job removed','info'); loadJobs(); }
+  else toast('Failed to remove job','err');
+}
+
+// ── Trend chart ────────────────────────────────────────────────────────────
+function renderTrend(trend){
+  const max=Math.max(...trend.map(t=>t.count),1);
+  document.getElementById('trend-bars').innerHTML=trend.map(t=>`
+    <div class="mbar" title="${t.day}: ${t.count}">
+      <div class="mbar-fill" style="height:${Math.max(5,(t.count/max)*100)}%"></div>
+    </div>`).join('');
+  document.getElementById('trend-days').innerHTML=trend.map(t=>{
+    const d=new Date(t.day);
+    return `<span>${d.toLocaleDateString('en',{weekday:'short'})}</span>`;
+  }).join('');
+}
+
+async function seedDemo(){await api('/demo/seed');toast('Demo data loaded','ok');loadStats();loadViolations();}
+
+// ── Export CSV ────────────────────────────────────────────────────────────
+function exportCSV(){
+  // Direct browser download via server endpoint — no JS CSV building needed
+  window.open(API+'/violations/export','_blank');
+}
+
+// ── Clear all violations ──────────────────────────────────────────────────
+async function clearAllViolations(){
+  if(!confirm('Delete ALL violation records? This cannot be undone.')) return;
+  const r=await api('/violations/all',{method:'DELETE'});
+  if(r?.ok){
+    toast('All records cleared','info');
+    selId=null;
+    document.getElementById('det-body').innerHTML='<div class="det-empty"><span style="font-size:22px">🔍</span><span>Select a violation</span></div>';
+    loadViolations(); loadStats();
+  } else toast('Failed to clear','err');
+}
+
+function toast(msg,type='info'){
+  const c=document.getElementById('toasts');
+  const el=document.createElement('div');
+  el.className=`toast ${type}`;el.textContent=msg;
+  c.appendChild(el);setTimeout(()=>el.remove(),3500);
+}
+</script>
+</body>
+</html>

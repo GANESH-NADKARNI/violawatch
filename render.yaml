@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: violawatch
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn server:app --workers 1 --threads 4 --timeout 120 --bind 0.0.0.0:$PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: DB_HOST
+        sync: false   # Set in Render dashboard
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        value: violawatch
