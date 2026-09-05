@@ -5,6 +5,15 @@ with **license plate recognition**, MySQL storage, Desktop GUI, and web dashboar
 
 ---
 
+## 🤗 Hosted Model
+
+[![Hugging Face Model](https://img.shields.io/badge/🤗%20Model-helmet--detection--yolov8-FFD21E?style=for-the-badge)](https://huggingface.co/Ganesh-Nadkarni/helmet-detection-yolov8)
+[![Hugging Face Space](https://img.shields.io/badge/🤗%20Space-Helmet--Detection--Demo-FFD21E?style=for-the-badge)](https://huggingface.co/spaces/Ganesh-Nadkarni/Helmet-Detection-Demo)
+
+The custom-trained YOLOv8 helmet-detection model referenced in the accuracy upgrade section below is published on Hugging Face, with a live demo Space to try it without any local setup.
+
+---
+
 ## Quick Start
 
 ### Desktop GUI (Recommended for local use)
@@ -117,7 +126,7 @@ Supported formats: `mp4 avi mov mkv wmv webm`
 | No Seatbelt | Diagonal line detection | 70–80%* |
 | License Plate | Contour + EasyOCR | 75–90% |
 
-*Upgrade to custom-trained YOLOv8 model for 90-95%+ accuracy:
+*Upgrade to custom-trained YOLOv8 model for 90-95%+ accuracy — already done, see [helmet-detection-yolov8](https://huggingface.co/Ganesh-Nadkarni/helmet-detection-yolov8) above:
 ```python
 # Download free datasets from: https://universe.roboflow.com
 # Then in config/config.ini:
@@ -134,7 +143,7 @@ violawatch/
 ├── main.py              ← Entry point (GUI or web)
 ├── server.py            ← Flask web API
 ├── Procfile             ← Railway/Heroku deploy
-├── Dockerfile           ← Docker deploy
+├── Dockerfile            ← Docker deploy
 ├── render.yaml          ← Render deploy
 ├── railway.toml         ← Railway config
 ├── requirements.txt
